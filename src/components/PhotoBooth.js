@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useDropzone } from 'react-dropzone';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { FaCamera, FaHeart, FaPaw, FaUpload, FaTimes } from 'react-icons/fa';
@@ -211,7 +211,6 @@ function PhotoBooth() {
   const [caption, setCaption] = useState('');
   const [username, setUsername] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [likedPhotos, setLikedPhotos] = useState(new Set());
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('dogForumUsername');
@@ -229,7 +228,8 @@ function PhotoBooth() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const photosData = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        likedBy: doc.data().likedBy || []
       }));
       setPhotos(photosData);
     });
@@ -278,7 +278,8 @@ function PhotoBooth() {
         caption: caption || 'My furry friend!',
         authorName: username,
         createdAt: serverTimestamp(),
-        likes: 0
+        likes: 0,
+        likedBy: []
       });
       
       setPreview(null);
@@ -295,16 +296,28 @@ function PhotoBooth() {
     setCaption('');
   };
 
-  const handleLike = (photoId) => {
-    setLikedPhotos(prev => {
-      const newLikes = new Set(prev);
-      if (newLikes.has(photoId)) {
-        newLikes.delete(photoId);
+  const userId = localStorage.getItem('dogForumUserId');
+
+  const handleLike = async (photoId, currentLikes, likedBy = []) => {
+    const userId = localStorage.getItem('dogForumUserId') || `guest_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem('dogForumUserId', userId);
+
+    try {
+      const photoRef = doc(db, 'photos', photoId);
+      if (likedBy.includes(userId)) {
+        await updateDoc(photoRef, {
+          likes: Math.max(0, currentLikes - 1),
+          likedBy: arrayRemove(userId)
+        });
       } else {
-        newLikes.add(photoId);
+        await updateDoc(photoRef, {
+          likes: currentLikes + 1,
+          likedBy: arrayUnion(userId)
+        });
       }
-      return newLikes;
-    });
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
   };
 
   return (
@@ -369,11 +382,11 @@ function PhotoBooth() {
                   <FaPaw /> {photo.authorName}
                 </PhotoAuthor>
                 <LikeButton 
-                  liked={likedPhotos.has(photo.id)}
-                  onClick={() => handleLike(photo.id)}
+                  liked={photo.likedBy?.includes(userId)}
+                  onClick={() => handleLike(photo.id, photo.likes || 0, photo.likedBy)}
                 >
                   <FaHeart />
-                  <span>{likedPhotos.has(photo.id) ? photo.likes + 1 : photo.likes}</span>
+                  <span>{photo.likes || 0}</span>
                 </LikeButton>
               </PhotoMeta>
             </PhotoInfo>

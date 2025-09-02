@@ -12,7 +12,8 @@ service cloud.firestore {
         request.resource.data.authorName is string &&
         request.resource.data.authorName.size() > 0 &&
         request.resource.data.authorName.size() <= 50;
-      allow update: if false; // Disable updates for now
+      // Allow updates only for likes and comments
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'comments']);
       allow delete: if false; // Disable deletes for now
     }
     
@@ -26,7 +27,8 @@ service cloud.firestore {
         request.resource.data.authorName is string &&
         request.resource.data.authorName.size() > 0 &&
         request.resource.data.authorName.size() <= 50;
-      allow update: if false; // Disable updates for now
+      // Allow updates only for likes
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']);
       allow delete: if false; // Disable deletes for now
     }
     

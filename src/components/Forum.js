@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaReply } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaShare } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
@@ -197,6 +197,66 @@ const ActionButton = styled.button`
   }
 `;
 
+const CommentsSection = styled.div`
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid ${props => props.theme.colors.gray.light};
+`;
+
+const CommentBox = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+`;
+
+const CommentInput = styled.input`
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid ${props => props.theme.colors.gray.medium};
+  border-radius: 20px;
+  font-size: 0.9rem;
+  
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+const CommentButton = styled.button`
+  padding: 0.5rem 1rem;
+  background: ${props => props.theme.colors.primary};
+  color: ${props => props.theme.colors.white};
+  border: none;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  
+  &:hover {
+    background: ${props => props.theme.colors.black};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const Comment = styled.div`
+  padding: 0.75rem;
+  background: ${props => props.theme.colors.secondary};
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+`;
+
+const CommentAuthor = styled.span`
+  font-weight: bold;
+  color: ${props => props.theme.colors.primary};
+  margin-right: 0.5rem;
+`;
+
+const CommentText = styled.span`
+  color: ${props => props.theme.colors.black};
+`;
+
 const topics = [
   { id: 'parks', title: 'Dog Parks', icon: '🏞️', description: 'Best local parks and play areas' },
   { id: 'recipes', title: 'Recipes', icon: '🍖', description: 'Homemade treats and meals' },
@@ -212,12 +272,15 @@ function Forum() {
   const [newPost, setNewPost] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const [likedPosts, setLikedPosts] = useState(new Set());
+  const [showComments, setShowComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [commentUsername, setCommentUsername] = useState('');
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('dogForumUsername');
     if (savedUsername) {
       setUsername(savedUsername);
+      setCommentUsername(savedUsername);
     }
   }, []);
 
@@ -231,7 +294,9 @@ function Forum() {
       const postsData = snapshot.docs
         .map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
+          likedBy: doc.data().likedBy || [],
+          comments: doc.data().comments || []
         }))
         .filter(post => post.topic === selectedTopic);
       setPosts(postsData);
@@ -247,12 +312,14 @@ function Forum() {
     setLoading(true);
     try {
       localStorage.setItem('dogForumUsername', username);
+      setCommentUsername(username);
       await addDoc(collection(db, 'posts'), {
         content: newPost,
         topic: selectedTopic,
         authorName: username,
         createdAt: serverTimestamp(),
         likes: 0,
+        likedBy: [],
         comments: []
       });
       setNewPost('');
@@ -263,21 +330,76 @@ function Forum() {
     }
   };
 
-  const handleLike = (postId) => {
-    setLikedPosts(prev => {
-      const newLikes = new Set(prev);
-      if (newLikes.has(postId)) {
-        newLikes.delete(postId);
+  const handleLike = async (postId, currentLikes, likedBy = []) => {
+    const userId = localStorage.getItem('dogForumUserId') || `guest_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem('dogForumUserId', userId);
+
+    try {
+      const postRef = doc(db, 'posts', postId);
+      if (likedBy.includes(userId)) {
+        await updateDoc(postRef, {
+          likes: Math.max(0, currentLikes - 1),
+          likedBy: arrayRemove(userId)
+        });
       } else {
-        newLikes.add(postId);
+        await updateDoc(postRef, {
+          likes: currentLikes + 1,
+          likedBy: arrayUnion(userId)
+        });
       }
-      return newLikes;
-    });
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
+  };
+
+  const handleComment = async (postId) => {
+    const comment = commentInputs[postId];
+    const name = commentUsername || username;
+    
+    if (!comment?.trim() || !name?.trim()) return;
+
+    try {
+      localStorage.setItem('dogForumUsername', name);
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        comments: arrayUnion({
+          text: comment,
+          authorName: name,
+          createdAt: new Date().toISOString()
+        })
+      });
+      setCommentInputs({ ...commentInputs, [postId]: '' });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  const handleShare = (post) => {
+    const shareText = `Check out this post from DogLovers Forum: "${post.content}" by ${post.authorName}`;
+    const shareUrl = window.location.href;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'DogLovers Forum',
+        text: shareText,
+        url: shareUrl
+      }).catch(err => console.log('Error sharing:', err));
+    } else {
+      navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  const toggleComments = (postId) => {
+    setShowComments(prev => ({
+      ...prev,
+      [postId]: !prev[postId]
+    }));
   };
 
   const formatTime = (timestamp) => {
     if (!timestamp) return 'Just now';
-    const date = timestamp.toDate();
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
     
@@ -287,9 +409,10 @@ function Forum() {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
+  const userId = localStorage.getItem('dogForumUserId');
+
   return (
     <ForumContainer>
-      
       <TopicsSection>
         {topics.map(topic => (
           <TopicCard
@@ -350,18 +473,60 @@ function Forum() {
                 <PostContent>{post.content}</PostContent>
                 <PostActions>
                   <ActionButton
-                    className={likedPosts.has(post.id) ? 'liked' : ''}
-                    onClick={() => handleLike(post.id)}
+                    className={post.likedBy?.includes(userId) ? 'liked' : ''}
+                    onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
                   >
-                    <FaHeart /> {likedPosts.has(post.id) ? 'Liked' : 'Like'}
+                    <FaHeart /> {post.likes || 0}
                   </ActionButton>
-                  <ActionButton>
-                    <FaComment /> Comment
+                  <ActionButton onClick={() => toggleComments(post.id)}>
+                    <FaComment /> {post.comments?.length || 0}
                   </ActionButton>
-                  <ActionButton>
-                    <FaReply /> Share
+                  <ActionButton onClick={() => handleShare(post)}>
+                    <FaShare /> Share
                   </ActionButton>
                 </PostActions>
+                
+                {showComments[post.id] && (
+                  <CommentsSection>
+                    {post.comments?.map((comment, idx) => (
+                      <Comment key={idx}>
+                        <CommentAuthor>{comment.authorName}:</CommentAuthor>
+                        <CommentText>{comment.text}</CommentText>
+                      </Comment>
+                    ))}
+                    <CommentBox>
+                      <CommentInput
+                        type="text"
+                        placeholder="Add a comment..."
+                        value={commentInputs[post.id] || ''}
+                        onChange={(e) => setCommentInputs({
+                          ...commentInputs,
+                          [post.id]: e.target.value
+                        })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleComment(post.id);
+                          }
+                        }}
+                      />
+                      <CommentButton
+                        onClick={() => handleComment(post.id)}
+                        disabled={!commentInputs[post.id]?.trim() || !commentUsername?.trim()}
+                      >
+                        Post
+                      </CommentButton>
+                    </CommentBox>
+                    {!commentUsername && (
+                      <UsernameInput
+                        type="text"
+                        value={commentUsername}
+                        onChange={(e) => setCommentUsername(e.target.value)}
+                        placeholder="Your name for comments"
+                        style={{ marginTop: '0.5rem', width: '100%' }}
+                      />
+                    )}
+                  </CommentsSection>
+                )}
               </PostCard>
             ))
           )}
