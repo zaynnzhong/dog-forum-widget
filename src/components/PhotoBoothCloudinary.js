@@ -204,6 +204,10 @@ const LikeButton = styled.button`
   }
 `;
 
+// Using Cloudinary for free image hosting
+const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/demo/image/upload';
+const CLOUDINARY_PRESET = 'docs_upload_example_us_preset';
+
 function PhotoBooth() {
   const [photos, setPhotos] = useState([]);
   const [preview, setPreview] = useState(null);
@@ -268,47 +272,22 @@ function PhotoBooth() {
     try {
       localStorage.setItem('dogForumUsername', username);
       
-      // Create FormData for Cloudinary upload
+      // Upload to Cloudinary (free tier)
       const formData = new FormData();
       formData.append('file', preview.file);
-      formData.append('upload_preset', 'dog_forum_uploads'); // We'll create this preset
-      formData.append('folder', 'dog-forum'); // Organize uploads in a folder
+      formData.append('upload_preset', CLOUDINARY_PRESET);
       
-      // Upload to Cloudinary
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/dogforum/image/upload`, // We'll set up this cloud name
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
+      const response = await fetch(CLOUDINARY_URL, {
+        method: 'POST',
+        body: formData
+      });
       
       if (!response.ok) {
-        // Fallback to demo account if custom account not set up
-        const demoFormData = new FormData();
-        demoFormData.append('file', preview.file);
-        demoFormData.append('upload_preset', 'ml_default');
-        
-        const demoResponse = await fetch(
-          'https://api.cloudinary.com/v1_1/demo/image/upload',
-          {
-            method: 'POST',
-            body: demoFormData
-          }
-        );
-        
-        if (!demoResponse.ok) {
-          throw new Error('Failed to upload image');
-        }
-        
-        const demoData = await demoResponse.json();
-        var imageUrl = demoData.secure_url;
-      } else {
-        const data = await response.json();
-        var imageUrl = data.secure_url;
+        throw new Error('Failed to upload image');
       }
       
-      console.log('Upload successful, URL:', imageUrl);
+      const data = await response.json();
+      const imageUrl = data.secure_url;
       
       // Save to Firestore
       await addDoc(collection(db, 'photos'), {
@@ -362,7 +341,6 @@ function PhotoBooth() {
 
   return (
     <PhotoBoothContainer>
-      
       <UploadSection>
         {!preview ? (
           <DropzoneArea {...getRootProps()} $isDragActive={isDragActive}>
