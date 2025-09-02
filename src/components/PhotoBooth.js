@@ -19,13 +19,13 @@ const UploadSection = styled.div`
 `;
 
 const DropzoneArea = styled.div`
-  border: 3px dashed ${props => props.isDragActive ? props.theme.colors.primary : props.theme.colors.gray.medium};
+  border: 3px dashed ${props => props.$isDragActive ? props.theme.colors.primary : props.theme.colors.gray.medium};
   border-radius: 12px;
   padding: 3rem 2rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: ${props => props.isDragActive ? props.theme.colors.secondary : props.theme.colors.white};
+  background: ${props => props.$isDragActive ? props.theme.colors.secondary : props.theme.colors.white};
   
   &:hover {
     border-color: ${props => props.theme.colors.primary};
@@ -337,7 +337,7 @@ function PhotoBooth() {
       
       <UploadSection>
         {!preview ? (
-          <DropzoneArea {...getRootProps()} isDragActive={isDragActive}>
+          <DropzoneArea {...getRootProps()} $isDragActive={isDragActive}>
             <input {...getInputProps()} />
             <UploadIcon>
               <FaUpload />

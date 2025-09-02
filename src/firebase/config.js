@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBg74v-h-5WymQm2J6TYSDjxAqBdFok0mQ",
   authDomain: "doggy-forum.firebaseapp.com",
   projectId: "doggy-forum",
-  storageBucket: "doggy-forum.firebasestorage.app",
+  storageBucket: "doggy-forum.appspot.com",
   messagingSenderId: "854035007283",
   appId: "1:854035007283:web:20f260df0c5f3387e66046",
   measurementId: "G-EL12YN0FJV"

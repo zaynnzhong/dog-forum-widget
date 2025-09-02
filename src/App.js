@@ -28,8 +28,8 @@ const TabContainer = styled.div`
 const Tab = styled.button`
   flex: 1;
   padding: 1rem;
-  background: ${props => props.active ? props.theme.colors.primary : props.theme.colors.white};
-  color: ${props => props.active ? props.theme.colors.white : props.theme.colors.black};
+  background: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.white};
+  color: ${props => props.$active ? props.theme.colors.white : props.theme.colors.black};
   border: none;
   font-size: 1rem;
   font-weight: 600;
@@ -41,7 +41,7 @@ const Tab = styled.button`
   gap: 0.5rem;
   
   &:hover {
-    background: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondary};
+    background: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.secondary};
   }
   
   &:first-child {
@@ -69,13 +69,13 @@ function App() {
       <AppContainer>
         <TabContainer>
           <Tab 
-            active={activeTab === 'forum'} 
+            $active={activeTab === 'forum'} 
             onClick={() => setActiveTab('forum')}
           >
             <FaComments /> Discussion Forum
           </Tab>
           <Tab 
-            active={activeTab === 'photos'} 
+            $active={activeTab === 'photos'} 
             onClick={() => setActiveTab('photos')}
           >
             <FaCamera /> Photo Booth
