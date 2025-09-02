@@ -41,13 +41,9 @@ export const GlobalStyles = createGlobalStyle`
     height: auto;
   }
 
-  .widget-container {
-    max-width: 100%;
+  #dog-forum-widget {
+    width: 100%;
     height: 100%;
     min-height: 600px;
-    background: ${props => props.theme.colors.secondary};
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: ${props => props.theme.shadows.large};
   }
 `;

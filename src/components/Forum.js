@@ -5,8 +5,7 @@ import { db } from '../firebase/config';
 import { FaPaw, FaComment, FaHeart, FaReply } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
 `;
 
 const TopicsSection = styled.div`
@@ -290,9 +289,6 @@ function Forum() {
 
   return (
     <ForumContainer>
-      <h1 style={{ marginBottom: '2rem', color: '#ff6620' }}>
-        <FaPaw /> Community Forum
-      </h1>
       
       <TopicsSection>
         {topics.map(topic => (
@@ -311,7 +307,7 @@ function Forum() {
       </TopicsSection>
       
       <DiscussionSection>
-        <h2 style={{ marginBottom: '1.5rem', color: '#ff6620' }}>
+        <h2 style={{ marginBottom: '1.5rem', color: '#ff6620', fontSize: '1.3rem' }}>
           {topics.find(t => t.id === selectedTopic)?.icon} {topics.find(t => t.id === selectedTopic)?.title}
         </h2>
         

@@ -7,27 +7,7 @@ import { db, storage } from '../firebase/config';
 import { FaCamera, FaHeart, FaPaw, FaUpload, FaTimes } from 'react-icons/fa';
 
 const PhotoBoothContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-`;
-
-const Header = styled.div`
-  text-align: center;
-  margin-bottom: 2rem;
-`;
-
-const Title = styled.h1`
-  color: ${props => props.theme.colors.primary};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-`;
-
-const Subtitle = styled.p`
-  color: ${props => props.theme.colors.gray.dark};
-  font-size: 1.1rem;
+  width: 100%;
 `;
 
 const UploadSection = styled.div`
@@ -329,12 +309,6 @@ function PhotoBooth() {
 
   return (
     <PhotoBoothContainer>
-      <Header>
-        <Title>
-          <FaCamera /> Photo Booth
-        </Title>
-        <Subtitle>Share adorable moments with your furry friends!</Subtitle>
-      </Header>
       
       <UploadSection>
         {!preview ? (
