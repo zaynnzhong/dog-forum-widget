@@ -1,0 +1,39 @@
+// Firestore Security Rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow all users to read and create posts (guest posting)
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['content', 'topic', 'authorName', 'createdAt']) &&
+        request.resource.data.content is string &&
+        request.resource.data.content.size() > 0 &&
+        request.resource.data.content.size() <= 5000 &&
+        request.resource.data.authorName is string &&
+        request.resource.data.authorName.size() > 0 &&
+        request.resource.data.authorName.size() <= 50;
+      allow update: if false; // Disable updates for now
+      allow delete: if false; // Disable deletes for now
+    }
+    
+    // Allow all users to read and create photos (guest posting)
+    match /photos/{photoId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['url', 'caption', 'authorName', 'createdAt']) &&
+        request.resource.data.url is string &&
+        request.resource.data.caption is string &&
+        request.resource.data.caption.size() <= 500 &&
+        request.resource.data.authorName is string &&
+        request.resource.data.authorName.size() > 0 &&
+        request.resource.data.authorName.size() <= 50;
+      allow update: if false; // Disable updates for now
+      allow delete: if false; // Disable deletes for now
+    }
+    
+    // Allow users to manage their own profiles
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if false; // Disable user profiles for guest mode
+    }
+  }
+}
