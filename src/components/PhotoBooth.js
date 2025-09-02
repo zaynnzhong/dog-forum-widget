@@ -260,18 +260,27 @@ function PhotoBooth() {
   });
 
   const handleUpload = async () => {
-    if (!preview || !username.trim()) return;
+    if (!preview || !username.trim()) {
+      alert('Please enter your name before uploading');
+      return;
+    }
 
     setUploading(true);
     try {
       localStorage.setItem('dogForumUsername', username);
       const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(7);
-      const fileName = `${randomId}_${timestamp}_${preview.file.name}`;
+      const randomId = Math.random().toString(36).substring(2, 11);
+      // Clean filename to avoid issues
+      const cleanFileName = preview.file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${randomId}_${timestamp}_${cleanFileName}`;
       const storageRef = ref(storage, `photos/${fileName}`);
+      
+      console.log('Uploading to:', `photos/${fileName}`);
       
       await uploadBytes(storageRef, preview.file);
       const downloadURL = await getDownloadURL(storageRef);
+      
+      console.log('Upload successful, URL:', downloadURL);
       
       await addDoc(collection(db, 'photos'), {
         url: downloadURL,
@@ -284,8 +293,11 @@ function PhotoBooth() {
       
       setPreview(null);
       setCaption('');
+      setUsername(username); // Keep username for next upload
+      alert('Photo uploaded successfully!');
     } catch (error) {
       console.error('Error uploading photo:', error);
+      alert(`Failed to upload photo: ${error.message || 'Unknown error'}`);
     } finally {
       setUploading(false);
     }
