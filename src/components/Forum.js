@@ -2,58 +2,40 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaShare } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaShare, FaTag } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
 `;
 
-const TopicsSection = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+const TagsSection = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-bottom: 2rem;
-`;
-
-const TopicCard = styled.div`
+  padding: 1rem;
   background: ${props => props.theme.colors.white};
-  padding: 1.5rem;
   border-radius: 12px;
   box-shadow: ${props => props.theme.shadows.small};
+`;
+
+const TagButton = styled.button`
+  padding: 0.5rem 1rem;
+  background: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.white};
+  color: ${props => props.$active ? props.theme.colors.white : props.theme.colors.black};
+  border: 2px solid ${props => props.$active ? props.theme.colors.primary : props.theme.colors.gray.medium};
+  border-radius: 20px;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  border: 2px solid transparent;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${props => props.theme.shadows.medium};
-    border-color: ${props => props.theme.colors.primary};
-  }
-  
-  &.active {
-    border-color: ${props => props.theme.colors.primary};
-    background: linear-gradient(135deg, ${props => props.theme.colors.white} 0%, ${props => props.theme.colors.secondary} 100%);
-  }
-`;
-
-const TopicTitle = styled.h3`
-  color: ${props => props.theme.colors.black};
-  margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-`;
-
-const TopicDescription = styled.p`
-  color: ${props => props.theme.colors.gray.dark};
-  font-size: 0.9rem;
-`;
-
-const DiscussionSection = styled.div`
-  background: ${props => props.theme.colors.white};
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: ${props => props.theme.shadows.medium};
+  gap: 0.3rem;
+  
+  &:hover {
+    background: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.secondary};
+    border-color: ${props => props.theme.colors.primary};
+  }
 `;
 
 const PostForm = styled.form`
@@ -69,7 +51,38 @@ const PostForm = styled.form`
 const InputRow = styled.div`
   display: flex;
   gap: 1rem;
+  align-items: flex-start;
+  
+  @media (max-width: ${props => props.theme.breakpoints.tablet}) {
+    flex-direction: column;
+  }
+`;
+
+const TagSelector = styled.div`
+  display: flex;
   align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+`;
+
+const TagLabel = styled.label`
+  font-size: 0.9rem;
+  color: ${props => props.theme.colors.gray.dark};
+  font-weight: 500;
+`;
+
+const TagDropdown = styled.select`
+  padding: 0.5rem 1rem;
+  border: 2px solid ${props => props.theme.colors.gray.medium};
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: ${props => props.theme.colors.white};
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
 `;
 
 const UsernameInput = styled.input`
@@ -112,6 +125,7 @@ const PostButton = styled.button`
   border-radius: 8px;
   font-size: 1rem;
   font-weight: bold;
+  align-self: flex-end;
   
   &:hover {
     background: ${props => props.theme.colors.black};
@@ -126,26 +140,32 @@ const PostButton = styled.button`
 const PostsList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 `;
 
 const PostCard = styled.div`
   padding: 1.5rem;
   background: ${props => props.theme.colors.white};
-  border: 1px solid ${props => props.theme.colors.gray.light};
   border-radius: 12px;
+  box-shadow: ${props => props.theme.shadows.small};
   transition: all 0.3s ease;
   
   &:hover {
-    box-shadow: ${props => props.theme.shadows.small};
+    box-shadow: ${props => props.theme.shadows.medium};
   }
 `;
 
 const PostHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 1rem;
+`;
+
+const PostHeaderLeft = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 `;
 
 const PostAuthor = styled.div`
@@ -154,6 +174,18 @@ const PostAuthor = styled.div`
   gap: 0.5rem;
   font-weight: bold;
   color: ${props => props.theme.colors.primary};
+`;
+
+const PostTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  background: ${props => props.theme.colors.secondary};
+  color: ${props => props.theme.colors.primary};
+  border-radius: 15px;
+  font-size: 0.85rem;
+  font-weight: 500;
 `;
 
 const PostTime = styled.span`
@@ -203,10 +235,43 @@ const CommentsSection = styled.div`
   border-top: 1px solid ${props => props.theme.colors.gray.light};
 `;
 
+const CommentsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+const Comment = styled.div`
+  padding: 0.75rem;
+  background: ${props => props.theme.colors.secondary};
+  border-radius: 8px;
+  border-left: 3px solid ${props => props.theme.colors.primary};
+`;
+
+const CommentAuthor = styled.span`
+  font-weight: bold;
+  color: ${props => props.theme.colors.primary};
+  margin-right: 0.5rem;
+  font-size: 0.9rem;
+`;
+
+const CommentText = styled.span`
+  color: ${props => props.theme.colors.black};
+  font-size: 0.9rem;
+`;
+
+const CommentTime = styled.span`
+  color: ${props => props.theme.colors.gray.dark};
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+`;
+
 const CommentBox = styled.div`
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
 `;
 
 const CommentInput = styled.input`
@@ -240,24 +305,17 @@ const CommentButton = styled.button`
   }
 `;
 
-const Comment = styled.div`
-  padding: 0.75rem;
-  background: ${props => props.theme.colors.secondary};
+const NoPostsMessage = styled.div`
+  text-align: center;
+  padding: 3rem;
+  color: ${props => props.theme.colors.gray.dark};
+  background: ${props => props.theme.colors.white};
   border-radius: 12px;
-  margin-bottom: 0.5rem;
-`;
-
-const CommentAuthor = styled.span`
-  font-weight: bold;
-  color: ${props => props.theme.colors.primary};
-  margin-right: 0.5rem;
-`;
-
-const CommentText = styled.span`
-  color: ${props => props.theme.colors.black};
+  box-shadow: ${props => props.theme.shadows.small};
 `;
 
 const topics = [
+  { id: 'all', title: 'All Posts', icon: '🐕', description: 'View all posts' },
   { id: 'parks', title: 'Dog Parks', icon: '🏞️', description: 'Best local parks and play areas' },
   { id: 'recipes', title: 'Recipes', icon: '🍖', description: 'Homemade treats and meals' },
   { id: 'training', title: 'Training Tips', icon: '🎾', description: 'Training advice and techniques' },
@@ -267,12 +325,12 @@ const topics = [
 ];
 
 function Forum() {
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedTopic, setSelectedTopic] = useState('general');
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showComments, setShowComments] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
   const [commentUsername, setCommentUsername] = useState('');
 
@@ -291,19 +349,21 @@ function Forum() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          likedBy: doc.data().likedBy || [],
-          comments: doc.data().comments || []
-        }))
-        .filter(post => post.topic === selectedTopic);
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        likedBy: doc.data().likedBy || [],
+        comments: doc.data().comments || []
+      }));
       setPosts(postsData);
     });
 
     return () => unsubscribe();
-  }, [selectedTopic]);
+  }, []);
+
+  const filteredPosts = selectedFilter === 'all' 
+    ? posts 
+    : posts.filter(post => post.topic === selectedFilter);
 
   const handleSubmitPost = async (e) => {
     e.preventDefault();
@@ -390,13 +450,6 @@ function Forum() {
     }
   };
 
-  const toggleComments = (postId) => {
-    setShowComments(prev => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }));
-  };
-
   const formatTime = (timestamp) => {
     if (!timestamp) return 'Just now';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -409,129 +462,143 @@ function Forum() {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
+  const getTopicInfo = (topicId) => {
+    return topics.find(t => t.id === topicId) || topics.find(t => t.id === 'general');
+  };
+
   const userId = localStorage.getItem('dogForumUserId');
 
   return (
     <ForumContainer>
-      <TopicsSection>
-        {topics.map(topic => (
-          <TopicCard
-            key={topic.id}
-            className={selectedTopic === topic.id ? 'active' : ''}
-            onClick={() => setSelectedTopic(topic.id)}
+      <PostForm onSubmit={handleSubmitPost}>
+        <TagSelector>
+          <TagLabel>Post to:</TagLabel>
+          <TagDropdown 
+            value={selectedTopic} 
+            onChange={(e) => setSelectedTopic(e.target.value)}
           >
-            <TopicTitle>
-              <span>{topic.icon}</span>
-              {topic.title}
-            </TopicTitle>
-            <TopicDescription>{topic.description}</TopicDescription>
-          </TopicCard>
+            {topics.filter(t => t.id !== 'all').map(topic => (
+              <option key={topic.id} value={topic.id}>
+                {topic.icon} {topic.title}
+              </option>
+            ))}
+          </TagDropdown>
+        </TagSelector>
+        <InputRow>
+          <UsernameInput
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Your name"
+            required
+          />
+          <TextArea
+            value={newPost}
+            onChange={(e) => setNewPost(e.target.value)}
+            placeholder="Share your thoughts with the dog-loving community..."
+            required
+          />
+          <PostButton type="submit" disabled={loading || !newPost.trim() || !username.trim()}>
+            Post
+          </PostButton>
+        </InputRow>
+      </PostForm>
+
+      <TagsSection>
+        {topics.map(topic => (
+          <TagButton
+            key={topic.id}
+            $active={selectedFilter === topic.id}
+            onClick={() => setSelectedFilter(topic.id)}
+          >
+            <span>{topic.icon}</span>
+            {topic.title}
+            {selectedFilter === topic.id && ` (${filteredPosts.length})`}
+          </TagButton>
         ))}
-      </TopicsSection>
+      </TagsSection>
       
-      <DiscussionSection>
-        <h2 style={{ marginBottom: '1.5rem', color: '#ff6620', fontSize: '1.3rem' }}>
-          {topics.find(t => t.id === selectedTopic)?.icon} {topics.find(t => t.id === selectedTopic)?.title}
-        </h2>
-        
-        <PostForm onSubmit={handleSubmitPost}>
-          <InputRow>
-            <UsernameInput
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Your name"
-              required
-            />
-            <TextArea
-              value={newPost}
-              onChange={(e) => setNewPost(e.target.value)}
-              placeholder={`Share your thoughts about ${topics.find(t => t.id === selectedTopic)?.title.toLowerCase()}...`}
-              required
-              style={{ flex: 1 }}
-            />
-            <PostButton type="submit" disabled={loading || !newPost.trim() || !username.trim()}>
-              Post
-            </PostButton>
-          </InputRow>
-        </PostForm>
-        
-        <PostsList>
-          {posts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-              No posts yet. Be the first to start a conversation!
-            </div>
-          ) : (
-            posts.map(post => (
-              <PostCard key={post.id}>
-                <PostHeader>
+      <PostsList>
+        {filteredPosts.length === 0 ? (
+          <NoPostsMessage>
+            {selectedFilter === 'all' 
+              ? 'No posts yet. Be the first to start a conversation!' 
+              : `No posts in ${getTopicInfo(selectedFilter).title} yet. Be the first to post!`}
+          </NoPostsMessage>
+        ) : (
+          filteredPosts.map(post => (
+            <PostCard key={post.id}>
+              <PostHeader>
+                <PostHeaderLeft>
                   <PostAuthor>
                     <FaPaw /> {post.authorName}
                   </PostAuthor>
-                  <PostTime>{formatTime(post.createdAt)}</PostTime>
-                </PostHeader>
-                <PostContent>{post.content}</PostContent>
-                <PostActions>
-                  <ActionButton
-                    className={post.likedBy?.includes(userId) ? 'liked' : ''}
-                    onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
-                  >
-                    <FaHeart /> {post.likes || 0}
-                  </ActionButton>
-                  <ActionButton onClick={() => toggleComments(post.id)}>
-                    <FaComment /> {post.comments?.length || 0}
-                  </ActionButton>
-                  <ActionButton onClick={() => handleShare(post)}>
-                    <FaShare /> Share
-                  </ActionButton>
-                </PostActions>
-                
-                {showComments[post.id] && (
-                  <CommentsSection>
-                    {post.comments?.map((comment, idx) => (
+                  <PostTag>
+                    <FaTag />
+                    {getTopicInfo(post.topic).icon} {getTopicInfo(post.topic).title}
+                  </PostTag>
+                </PostHeaderLeft>
+                <PostTime>{formatTime(post.createdAt)}</PostTime>
+              </PostHeader>
+              <PostContent>{post.content}</PostContent>
+              <PostActions>
+                <ActionButton
+                  className={post.likedBy?.includes(userId) ? 'liked' : ''}
+                  onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
+                >
+                  <FaHeart /> {post.likes || 0}
+                </ActionButton>
+                <ActionButton>
+                  <FaComment /> {post.comments?.length || 0}
+                </ActionButton>
+                <ActionButton onClick={() => handleShare(post)}>
+                  <FaShare /> Share
+                </ActionButton>
+              </PostActions>
+              
+              <CommentsSection>
+                {post.comments && post.comments.length > 0 && (
+                  <CommentsList>
+                    {post.comments.map((comment, idx) => (
                       <Comment key={idx}>
-                        <CommentAuthor>{comment.authorName}:</CommentAuthor>
-                        <CommentText>{comment.text}</CommentText>
+                        <div>
+                          <CommentAuthor>{comment.authorName}</CommentAuthor>
+                          <CommentTime>{formatTime(comment.createdAt)}</CommentTime>
+                        </div>
+                        <div style={{ marginTop: '0.25rem' }}>
+                          <CommentText>{comment.text}</CommentText>
+                        </div>
                       </Comment>
                     ))}
-                    <CommentBox>
-                      <CommentInput
-                        type="text"
-                        placeholder="Add a comment..."
-                        value={commentInputs[post.id] || ''}
-                        onChange={(e) => setCommentInputs({
-                          ...commentInputs,
-                          [post.id]: e.target.value
-                        })}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleComment(post.id);
-                          }
-                        }}
-                      />
-                      <CommentButton
-                        onClick={() => handleComment(post.id)}
-                        disabled={!commentInputs[post.id]?.trim() || !commentUsername?.trim()}
-                      >
-                        Post
-                      </CommentButton>
-                    </CommentBox>
-                    {!commentUsername && (
-                      <UsernameInput
-                        type="text"
-                        value={commentUsername}
-                        onChange={(e) => setCommentUsername(e.target.value)}
-                        placeholder="Your name for comments"
-                        style={{ marginTop: '0.5rem', width: '100%' }}
-                      />
-                    )}
-                  </CommentsSection>
+                  </CommentsList>
                 )}
-              </PostCard>
-            ))
-          )}
-        </PostsList>
-      </DiscussionSection>
+                <CommentBox>
+                  <CommentInput
+                    type="text"
+                    placeholder="Add a comment..."
+                    value={commentInputs[post.id] || ''}
+                    onChange={(e) => setCommentInputs({
+                      ...commentInputs,
+                      [post.id]: e.target.value
+                    })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleComment(post.id);
+                      }
+                    }}
+                  />
+                  <CommentButton
+                    onClick={() => handleComment(post.id)}
+                    disabled={!commentInputs[post.id]?.trim() || !commentUsername?.trim()}
+                  >
+                    Post
+                  </CommentButton>
+                </CommentBox>
+              </CommentsSection>
+            </PostCard>
+          ))
+        )}
+      </PostsList>
     </ForumContainer>
   );
 }
