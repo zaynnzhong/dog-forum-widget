@@ -276,7 +276,7 @@ function PhotoBooth() {
       
       // Upload to Cloudinary
       const response = await fetch(
-        `https://api.cloudinary.com/v1_1/dogforum/image/upload`, // We'll set up this cloud name
+        `https://api.cloudinary.com/v1_1/dpizql20z/image/upload`, // We'll set up this cloud name
         {
           method: 'POST',
           body: formData
@@ -305,7 +305,7 @@ function PhotoBooth() {
         var imageUrl = demoData.secure_url;
       } else {
         const data = await response.json();
-        var imageUrl = data.secure_url;
+        imageUrl = data.secure_url;
       }
       
       console.log('Upload successful, URL:', imageUrl);
