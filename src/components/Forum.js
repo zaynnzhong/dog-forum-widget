@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaShare, FaTag } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaShare } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
@@ -12,11 +12,6 @@ const TagsSection = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: ${props => props.theme.colors.white};
-  border-radius: 12px;
-  box-shadow: ${props => props.theme.shadows.small};
 `;
 
 const TagButton = styled.button`
@@ -41,7 +36,7 @@ const TagButton = styled.button`
 const PostForm = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
   margin-bottom: 2rem;
   padding: 1.5rem;
   background: ${props => props.theme.colors.secondary};
@@ -58,31 +53,11 @@ const InputRow = styled.div`
   }
 `;
 
-const TagSelector = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-`;
-
-const TagLabel = styled.label`
+const TagSelectorLabel = styled.div`
   font-size: 0.9rem;
   color: ${props => props.theme.colors.gray.dark};
   font-weight: 500;
-`;
-
-const TagDropdown = styled.select`
-  padding: 0.5rem 1rem;
-  border: 2px solid ${props => props.theme.colors.gray.medium};
-  border-radius: 8px;
-  font-size: 0.9rem;
-  background: ${props => props.theme.colors.white};
-  cursor: pointer;
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary};
-  }
+  margin-bottom: 0.5rem;
 `;
 
 const UsernameInput = styled.input`
@@ -181,8 +156,8 @@ const PostTag = styled.span`
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.75rem;
-  background: ${props => props.theme.colors.secondary};
-  color: ${props => props.theme.colors.primary};
+  background: ${props => props.theme.colors.primary};
+  color: ${props => props.theme.colors.white};
   border-radius: 15px;
   font-size: 0.85rem;
   font-weight: 500;
@@ -246,7 +221,8 @@ const CommentsList = styled.div`
 
 const Comment = styled.div`
   padding: 0.75rem;
-  background: ${props => props.theme.colors.secondary};
+  background: ${props => props.theme.colors.white};
+  border: 1px solid ${props => props.theme.colors.gray.light};
   border-radius: 8px;
   border-left: 3px solid ${props => props.theme.colors.primary};
 `;
@@ -315,17 +291,15 @@ const NoPostsMessage = styled.div`
 `;
 
 const topics = [
-  { id: 'all', title: 'All Posts', icon: '🐕', description: 'View all posts' },
+  { id: 'general', title: 'General Chat', icon: '💬', description: 'Everything dog-related' },
   { id: 'parks', title: 'Dog Parks', icon: '🏞️', description: 'Best local parks and play areas' },
   { id: 'recipes', title: 'Recipes', icon: '🍖', description: 'Homemade treats and meals' },
-  { id: 'training', title: 'Training Tips', icon: '🎾', description: 'Training advice and techniques' },
-  { id: 'health', title: 'Health & Care', icon: '💊', description: 'Health tips and vet advice' },
-  { id: 'grooming', title: 'Grooming', icon: '✂️', description: 'Grooming tips and tools' },
-  { id: 'general', title: 'General Chat', icon: '💬', description: 'Everything dog-related' }
+  { id: 'training', title: 'Training', icon: '🎾', description: 'Training advice and techniques' },
+  { id: 'health', title: 'Health', icon: '💊', description: 'Health tips and vet advice' },
+  { id: 'grooming', title: 'Grooming', icon: '✂️', description: 'Grooming tips and tools' }
 ];
 
 function Forum() {
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedTopic, setSelectedTopic] = useState('general');
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
@@ -361,9 +335,7 @@ function Forum() {
     return () => unsubscribe();
   }, []);
 
-  const filteredPosts = selectedFilter === 'all' 
-    ? posts 
-    : posts.filter(post => post.topic === selectedFilter);
+  // Show all posts, no filtering
 
   const handleSubmitPost = async (e) => {
     e.preventDefault();
@@ -471,19 +443,20 @@ function Forum() {
   return (
     <ForumContainer>
       <PostForm onSubmit={handleSubmitPost}>
-        <TagSelector>
-          <TagLabel>Post to:</TagLabel>
-          <TagDropdown 
-            value={selectedTopic} 
-            onChange={(e) => setSelectedTopic(e.target.value)}
-          >
-            {topics.filter(t => t.id !== 'all').map(topic => (
-              <option key={topic.id} value={topic.id}>
-                {topic.icon} {topic.title}
-              </option>
-            ))}
-          </TagDropdown>
-        </TagSelector>
+        <TagSelectorLabel>Select a topic:</TagSelectorLabel>
+        <TagsSection>
+          {topics.map(topic => (
+            <TagButton
+              key={topic.id}
+              type="button"
+              $active={selectedTopic === topic.id}
+              onClick={() => setSelectedTopic(topic.id)}
+            >
+              <span>{topic.icon}</span>
+              {topic.title}
+            </TagButton>
+          ))}
+        </TagsSection>
         <InputRow>
           <UsernameInput
             type="text"
@@ -504,29 +477,13 @@ function Forum() {
         </InputRow>
       </PostForm>
 
-      <TagsSection>
-        {topics.map(topic => (
-          <TagButton
-            key={topic.id}
-            $active={selectedFilter === topic.id}
-            onClick={() => setSelectedFilter(topic.id)}
-          >
-            <span>{topic.icon}</span>
-            {topic.title}
-            {selectedFilter === topic.id && ` (${filteredPosts.length})`}
-          </TagButton>
-        ))}
-      </TagsSection>
-      
       <PostsList>
-        {filteredPosts.length === 0 ? (
+        {posts.length === 0 ? (
           <NoPostsMessage>
-            {selectedFilter === 'all' 
-              ? 'No posts yet. Be the first to start a conversation!' 
-              : `No posts in ${getTopicInfo(selectedFilter).title} yet. Be the first to post!`}
+            No posts yet. Be the first to start a conversation!
           </NoPostsMessage>
         ) : (
-          filteredPosts.map(post => (
+          posts.map(post => (
             <PostCard key={post.id}>
               <PostHeader>
                 <PostHeaderLeft>
@@ -534,8 +491,7 @@ function Forum() {
                     <FaPaw /> {post.authorName}
                   </PostAuthor>
                   <PostTag>
-                    <FaTag />
-                    {getTopicInfo(post.topic).icon} {getTopicInfo(post.topic).title}
+                    {getTopicInfo(post.topic).title}
                   </PostTag>
                 </PostHeaderLeft>
                 <PostTime>{formatTime(post.createdAt)}</PostTime>
