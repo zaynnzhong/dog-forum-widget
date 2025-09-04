@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen, FaTrash } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
@@ -396,6 +396,32 @@ const PostActions = styled.div`
   gap: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid ${props => props.theme.colors.gray.light};
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const LeftActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+const DeleteButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  border: 1px solid #ff4444;
+  border-radius: 16px;
+  color: #ff4444;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  &:hover {
+    background: #ff4444;
+    color: white;
+  }
 `;
 
 const ActionButton = styled.button`
@@ -448,6 +474,21 @@ const CommentHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.25rem;
+`;
+
+const CommentDeleteButton = styled.button`
+  background: none;
+  border: none;
+  color: #ff4444;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: #ff444420;
+  }
 `;
 
 const CommentAuthor = styled.span`
@@ -685,6 +726,13 @@ function ForumReorganized() {
 
     // Use provided username or generate a fun default
     const finalUsername = username.trim() || getRandomUsername();
+    
+    // Get or create a unique user ID for this browser
+    let userId = localStorage.getItem('dogForumUserId');
+    if (!userId) {
+      userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+      localStorage.setItem('dogForumUserId', userId);
+    }
 
     setLoading(true);
     try {
@@ -695,6 +743,7 @@ function ForumReorganized() {
         content: newPost,
         topic: selectedTopic,
         authorName: finalUsername,
+        authorId: userId,  // Add author ID for tracking ownership
         createdAt: serverTimestamp(),
         likes: 0,
         likedBy: [],
@@ -735,6 +784,34 @@ function ForumReorganized() {
     }
   };
 
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Are you sure you want to delete this post?')) return;
+    
+    try {
+      await deleteDoc(doc(db, 'posts', postId));
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post. Please try again.');
+    }
+  };
+
+  const handleDeleteComment = async (postId, commentToDelete) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+      const postRef = doc(db, 'posts', postId);
+      const post = posts.find(p => p.id === postId);
+      const updatedComments = post.comments.filter(c => c.id !== commentToDelete.id);
+      
+      await updateDoc(postRef, {
+        comments: updatedComments
+      });
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment. Please try again.');
+    }
+  };
+
   const handleComment = async (postId) => {
     const comment = commentInputs[postId];
     let name = commentUsername || username;
@@ -747,13 +824,22 @@ function ForumReorganized() {
     
     if (!comment?.trim()) return;
 
+    // Get or create a unique user ID for this browser
+    let userId = localStorage.getItem('dogForumUserId');
+    if (!userId) {
+      userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+      localStorage.setItem('dogForumUserId', userId);
+    }
+
     try {
       localStorage.setItem('dogForumUsername', name);
       const postRef = doc(db, 'posts', postId);
       await updateDoc(postRef, {
         comments: arrayUnion({
+          id: `comment_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
           text: comment,
           authorName: name,
+          authorId: userId,  // Add author ID for tracking ownership
           createdAt: new Date().toISOString()
         })
       });
@@ -954,15 +1040,22 @@ function ForumReorganized() {
                     )}
 
                     <PostActions>
-                      <ActionButton
-                        className={post.likedBy?.includes(userId) ? 'liked' : ''}
-                        onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
-                      >
-                        <FaHeart /> {post.likes || 0}
-                      </ActionButton>
-                      <ActionButton>
-                        <FaComment /> {post.comments?.length || 0}
-                      </ActionButton>
+                      <LeftActions>
+                        <ActionButton
+                          className={post.likedBy?.includes(userId) ? 'liked' : ''}
+                          onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
+                        >
+                          <FaHeart /> {post.likes || 0}
+                        </ActionButton>
+                        <ActionButton>
+                          <FaComment /> {post.comments?.length || 0}
+                        </ActionButton>
+                      </LeftActions>
+                      {post.authorId === userId && (
+                        <DeleteButton onClick={() => handleDeletePost(post.id)}>
+                          <FaTrash /> Delete
+                        </DeleteButton>
+                      )}
                     </PostActions>
                     
                     {(post.comments?.length > 0 || true) && (
@@ -977,8 +1070,15 @@ function ForumReorganized() {
                               return (
                                 <Comment key={idx}>
                                   <CommentHeader>
-                                    <CommentAuthor>{comment.authorName}</CommentAuthor>
-                                    <CommentTime>{formatTime(comment.createdAt)}</CommentTime>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                      <CommentAuthor>{comment.authorName}</CommentAuthor>
+                                      <CommentTime>{formatTime(comment.createdAt)}</CommentTime>
+                                    </div>
+                                    {comment.authorId === userId && (
+                                      <CommentDeleteButton onClick={() => handleDeleteComment(post.id, comment)}>
+                                        <FaTrash /> Delete
+                                      </CommentDeleteButton>
+                                    )}
                                   </CommentHeader>
                                   <CommentText className={!isCommentExpanded && shouldShowCommentExpand ? 'collapsed' : ''}>
                                     {comment.text}
