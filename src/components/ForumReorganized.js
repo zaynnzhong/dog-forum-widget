@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaShare, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
@@ -763,31 +763,6 @@ function ForumReorganized() {
     }
   };
 
-  const handleShare = async (post) => {
-    const shareText = `${post.title} - DogLovers Forum`;
-    const shareUrl = window.location.href;
-    
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: post.title,
-          text: shareText,
-          url: shareUrl
-        });
-      } else {
-        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-        alert('Link copied to clipboard!');
-      }
-    } catch (err) {
-      console.log('Error sharing:', err);
-      try {
-        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-        alert('Link copied to clipboard!');
-      } catch (clipErr) {
-        alert('Unable to share. Please copy the URL manually.');
-      }
-    }
-  };
 
   const formatTime = (timestamp) => {
     if (!timestamp) return 'Just now';
@@ -987,9 +962,6 @@ function ForumReorganized() {
                       </ActionButton>
                       <ActionButton>
                         <FaComment /> {post.comments?.length || 0}
-                      </ActionButton>
-                      <ActionButton onClick={() => handleShare(post)}>
-                        <FaShare /> Share
                       </ActionButton>
                     </PostActions>
                     
