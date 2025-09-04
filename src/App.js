@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ThemeProvider } from 'styled-components';
 import { theme } from './styles/theme';
 import { GlobalStyles } from './styles/GlobalStyles';
-import Forum from './components/Forum';
+import ForumSimplified from './components/ForumSimplified';
 import PhotoBooth from './components/PhotoBooth';
 import styled from 'styled-components';
 import { FaComments, FaCamera } from 'react-icons/fa';
@@ -13,7 +13,7 @@ const AppContainer = styled.div`
   min-height: 600px;
   display: flex;
   flex-direction: column;
-  background: ${props => props.theme.colors.secondary};
+  background: #FCFAF4;
   border-radius: 16px;
   overflow: hidden;
 `;
@@ -57,7 +57,7 @@ const MainContent = styled.main`
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background: ${props => props.theme.colors.secondary};
+  background: #FCFAF4;
 `;
 
 function App() {
@@ -82,7 +82,7 @@ function App() {
           </Tab>
         </TabContainer>
         <MainContent>
-          {activeTab === 'forum' ? <Forum /> : <PhotoBooth />}
+          {activeTab === 'forum' ? <ForumSimplified /> : <PhotoBooth />}
         </MainContent>
       </AppContainer>
     </ThemeProvider>
