@@ -2,19 +2,53 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaShare, FaSearch, FaChevronDown, FaChevronUp, FaFilter } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaShare, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
 `;
 
-const HeaderSection = styled.div`
-  margin-bottom: 1.5rem;
+const TwoColumnLayout = styled.div`
+  display: flex;
+  gap: 1.5rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+const LeftColumn = styled.div`
+  flex: 0 0 320px;
+  
+  @media (max-width: 768px) {
+    flex: 1;
+  }
+`;
+
+const MainColumn = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const SearchFilterCard = styled.div`
+  background: ${props => props.theme.colors.white};
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: ${props => props.theme.shadows.small};
+`;
+
+const SearchSection = styled.div`
+  margin-bottom: 1.25rem;
+`;
+
+const SearchLabel = styled.label`
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.black};
+  margin-bottom: 0.5rem;
 `;
 
 const SearchBar = styled.div`
@@ -22,11 +56,10 @@ const SearchBar = styled.div`
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: ${props => props.theme.colors.white};
+  background: #FCFAF4;
   border-radius: 8px;
   border: 2px solid transparent;
   transition: all 0.3s ease;
-  box-shadow: ${props => props.theme.shadows.small};
   
   &:focus-within {
     border-color: ${props => props.theme.colors.primary};
@@ -49,52 +82,111 @@ const SearchIcon = styled(FaSearch)`
   color: ${props => props.theme.colors.gray.dark};
 `;
 
-const TwoColumnLayout = styled.div`
+const FilterSection = styled.div`
+  border-top: 1px solid ${props => props.theme.colors.gray.light};
+  padding-top: 1.25rem;
+`;
+
+const FilterTitle = styled.h3`
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
   display: flex;
-  gap: 1.5rem;
-  flex: 1;
-  min-height: 0;
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
+  align-items: center;
+  gap: 0.5rem;
 `;
 
-const LeftColumn = styled.div`
-  flex: 0 0 320px;
-  
-  @media (max-width: 768px) {
-    flex: 1;
-  }
-`;
-
-const MainColumn = styled.div`
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
+const TopicFilter = styled.div`
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const TopicFilterItem = styled.button`
+  padding: 0.5rem 0.75rem;
+  background: ${props => props.$active ? '#FCFAF4' : 'transparent'};
+  border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
+  border-radius: 6px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  
+  &:hover {
+    background: #FCFAF4;
+  }
+`;
+
+const TopicName = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const PostCount = styled.span`
+  background: ${props => props.theme.colors.gray.light};
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: ${props => props.theme.colors.gray.dark};
 `;
 
 const PostFormCard = styled.div`
   background: ${props => props.theme.colors.white};
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
   margin-bottom: 1rem;
   box-shadow: ${props => props.theme.shadows.small};
+  border: 2px solid ${props => props.theme.colors.primary}20;
+`;
+
+const PostFormHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid ${props => props.theme.colors.gray.light};
+`;
+
+const PostFormIcon = styled.div`
+  width: 40px;
+  height: 40px;
+  background: ${props => props.theme.colors.primary};
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+`;
+
+const PostFormTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.black};
+  margin: 0;
+`;
+
+const PostFormSubtitle = styled.p`
+  font-size: 0.85rem;
+  color: ${props => props.theme.colors.gray.dark};
+  margin: 0;
 `;
 
 const PostForm = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 `;
 
 const TitleInput = styled.input`
   padding: 0.75rem 1rem;
   border: 2px solid ${props => props.theme.colors.gray.medium};
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 500;
   
   &:focus {
@@ -126,7 +218,7 @@ const TextArea = styled.textarea`
   border-radius: 8px;
   font-size: 0.95rem;
   resize: vertical;
-  min-height: 100px;
+  min-height: 80px;
   
   &:focus {
     outline: none;
@@ -176,65 +268,23 @@ const PostButton = styled.button`
   }
 `;
 
-const FilterCard = styled.div`
-  background: ${props => props.theme.colors.white};
-  border-radius: 12px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: ${props => props.theme.shadows.small};
-`;
-
-const FilterTitle = styled.h3`
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const TopicFilter = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-`;
-
-const TopicFilterItem = styled.button`
-  padding: 0.5rem 0.75rem;
-  background: ${props => props.$active ? '#FCFAF4' : 'transparent'};
-  border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
-  border-radius: 6px;
-  text-align: left;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-  
-  &:hover {
-    background: #FCFAF4;
-  }
-`;
-
-const TopicName = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const PostCount = styled.span`
-  background: ${props => props.theme.colors.gray.light};
-  padding: 0.15rem 0.4rem;
-  border-radius: 10px;
-  font-size: 0.8rem;
-  color: ${props => props.theme.colors.gray.dark};
-`;
-
 const SortSection = styled.div`
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: ${props => props.theme.colors.white};
+  border-radius: 8px;
+  box-shadow: ${props => props.theme.shadows.small};
   flex-wrap: wrap;
+`;
+
+const SortLabel = styled.span`
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.gray.dark};
+  margin-right: 0.5rem;
+  align-self: center;
 `;
 
 const SortButton = styled.button`
@@ -255,9 +305,6 @@ const PostsList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
 `;
 
 const PostCard = styled.div`
@@ -509,10 +556,40 @@ const sortOptions = [
   { id: 'latest', label: 'Latest' },
   { id: 'oldest', label: 'Oldest' },
   { id: 'popular', label: 'Popular' },
-  { id: 'likes', label: 'Liked' }
+  { id: 'likes', label: 'Most Liked' }
 ];
 
-function ForumSimplified() {
+// Fun dog-themed default usernames
+const defaultUsernames = [
+  'PawsomeParent',
+  'WaggyTailFan',
+  'BarkBuddy',
+  'FurryFriend',
+  'PuppyLover',
+  'TailWagger',
+  'DogWhisperer',
+  'PawPatroller',
+  'BiscuitGiver',
+  'WoofExpert',
+  'SnugglePup',
+  'FetchMaster',
+  'BellyRubber',
+  'TreatDispenser',
+  'LeashHolder',
+  'ZoomiesWatcher',
+  'BoopTheSnoot',
+  'FluffAdmirer',
+  'GoodBoyFan',
+  'PupParent'
+];
+
+const getRandomUsername = () => {
+  const randomName = defaultUsernames[Math.floor(Math.random() * defaultUsernames.length)];
+  const randomNum = Math.floor(Math.random() * 999) + 1;
+  return `${randomName}${randomNum}`;
+};
+
+function ForumReorganized() {
   const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [postTitle, setPostTitle] = useState('');
@@ -604,17 +681,20 @@ function ForumSimplified() {
 
   const handleSubmitPost = async (e) => {
     e.preventDefault();
-    if (!postTitle.trim() || !newPost.trim() || !username.trim()) return;
+    if (!postTitle.trim() || !newPost.trim()) return;
+
+    // Use provided username or generate a fun default
+    const finalUsername = username.trim() || getRandomUsername();
 
     setLoading(true);
     try {
-      localStorage.setItem('dogForumUsername', username);
-      setCommentUsername(username);
+      localStorage.setItem('dogForumUsername', finalUsername);
+      setCommentUsername(finalUsername);
       await addDoc(collection(db, 'posts'), {
         title: postTitle,
         content: newPost,
         topic: selectedTopic,
-        authorName: username,
+        authorName: finalUsername,
         createdAt: serverTimestamp(),
         likes: 0,
         likedBy: [],
@@ -622,6 +702,10 @@ function ForumSimplified() {
       });
       setPostTitle('');
       setNewPost('');
+      // Keep the username if user entered one
+      if (!username.trim()) {
+        setUsername('');
+      }
     } catch (error) {
       console.error('Error posting:', error);
     } finally {
@@ -653,9 +737,15 @@ function ForumSimplified() {
 
   const handleComment = async (postId) => {
     const comment = commentInputs[postId];
-    const name = commentUsername || username;
+    let name = commentUsername || username;
     
-    if (!comment?.trim() || !name?.trim()) return;
+    // If no name provided, generate a fun default
+    if (!name?.trim()) {
+      name = getRandomUsername();
+      setCommentUsername(name);
+    }
+    
+    if (!comment?.trim()) return;
 
     try {
       localStorage.setItem('dogForumUsername', name);
@@ -736,33 +826,76 @@ function ForumSimplified() {
 
   return (
     <ForumContainer>
-      <HeaderSection>
-        <SearchBar>
-          <SearchIcon />
-          <SearchInput
-            type="text"
-            placeholder="Search discussions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </SearchBar>
-      </HeaderSection>
-
       <TwoColumnLayout>
         <LeftColumn>
+          <SearchFilterCard>
+            <SearchSection>
+              <SearchLabel>Search discussions</SearchLabel>
+              <SearchBar>
+                <SearchIcon />
+                <SearchInput
+                  type="text"
+                  placeholder="Search by title, content, or author..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </SearchBar>
+            </SearchSection>
+
+            <FilterSection>
+              <FilterTitle>
+                <FaFilter /> Filter by Topic
+              </FilterTitle>
+              <TopicFilter>
+                <TopicFilterItem
+                  $active={filterTopic === 'all'}
+                  onClick={() => setFilterTopic('all')}
+                >
+                  <TopicName>All Topics</TopicName>
+                  <PostCount>{topicCounts.all}</PostCount>
+                </TopicFilterItem>
+                {topics.map(topic => (
+                  <TopicFilterItem
+                    key={topic.id}
+                    $active={filterTopic === topic.id}
+                    onClick={() => setFilterTopic(topic.id)}
+                  >
+                    <TopicName>
+                      <span>{topic.icon}</span>
+                      {topic.title}
+                    </TopicName>
+                    <PostCount>{topicCounts[topic.id]}</PostCount>
+                  </TopicFilterItem>
+                ))}
+              </TopicFilter>
+            </FilterSection>
+          </SearchFilterCard>
+        </LeftColumn>
+
+        <MainColumn>
           <PostFormCard>
+            <PostFormHeader>
+              <PostFormIcon>
+                <FaPen />
+              </PostFormIcon>
+              <div>
+                <PostFormTitle>Share Your Paw-some Story</PostFormTitle>
+                <PostFormSubtitle>Ask questions, share tips, or celebrate your furry friend with fellow dog lovers!</PostFormSubtitle>
+              </div>
+            </PostFormHeader>
+            
             <PostForm onSubmit={handleSubmitPost}>
               <TitleInput
                 type="text"
                 value={postTitle}
                 onChange={(e) => setPostTitle(e.target.value)}
-                placeholder="Discussion title..."
+                placeholder="What's on your mind? (e.g., 'Best treats for training?')"
                 required
               />
               <TextArea
                 value={newPost}
                 onChange={(e) => setNewPost(e.target.value)}
-                placeholder="Share your thoughts with the community..."
+                placeholder="Share more details with the community..."
                 required
               />
               <TopicSelector>
@@ -781,46 +914,17 @@ function ForumSimplified() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Your name"
+                placeholder="Your name (optional - we'll give you a fun one!)"
                 required
               />
-              <PostButton type="submit" disabled={loading || !postTitle.trim() || !newPost.trim() || !username.trim()}>
-                Post Discussion
+              <PostButton type="submit" disabled={loading || !postTitle.trim() || !newPost.trim()}>
+                {loading ? 'Sharing...' : '🐾 Share with the Community'}
               </PostButton>
             </PostForm>
           </PostFormCard>
 
-          <FilterCard>
-            <FilterTitle>
-              <FaFilter /> Topics
-            </FilterTitle>
-            <TopicFilter>
-              <TopicFilterItem
-                $active={filterTopic === 'all'}
-                onClick={() => setFilterTopic('all')}
-              >
-                <TopicName>All Topics</TopicName>
-                <PostCount>{topicCounts.all}</PostCount>
-              </TopicFilterItem>
-              {topics.map(topic => (
-                <TopicFilterItem
-                  key={topic.id}
-                  $active={filterTopic === topic.id}
-                  onClick={() => setFilterTopic(topic.id)}
-                >
-                  <TopicName>
-                    <span>{topic.icon}</span>
-                    {topic.title}
-                  </TopicName>
-                  <PostCount>{topicCounts[topic.id]}</PostCount>
-                </TopicFilterItem>
-              ))}
-            </TopicFilter>
-          </FilterCard>
-        </LeftColumn>
-
-        <MainColumn>
           <SortSection>
+            <SortLabel>Sort by:</SortLabel>
             {sortOptions.map(option => (
               <SortButton
                 key={option.id}
@@ -837,7 +941,7 @@ function ForumSimplified() {
               <NoPostsMessage>
                 {searchQuery ? 
                   'No discussions found matching your search.' : 
-                  'No discussions yet. Be the first to start one!'}
+                  'Be the first to start a tail-wagging discussion!'}
               </NoPostsMessage>
             ) : (
               filteredAndSortedPosts.map(post => {
@@ -929,7 +1033,7 @@ function ForumSimplified() {
                         <CommentBox>
                           <CommentInput
                             type="text"
-                            placeholder="Add a comment..."
+                            placeholder="Share your thoughts..."
                             value={commentInputs[post.id] || ''}
                             onChange={(e) => setCommentInputs({
                               ...commentInputs,
@@ -943,9 +1047,9 @@ function ForumSimplified() {
                           />
                           <CommentButton
                             onClick={() => handleComment(post.id)}
-                            disabled={!commentInputs[post.id]?.trim() || !commentUsername?.trim()}
+                            disabled={!commentInputs[post.id]?.trim()}
                           >
-                            Post
+                            Reply
                           </CommentButton>
                         </CommentBox>
                       </CommentsSection>
@@ -961,4 +1065,4 @@ function ForumSimplified() {
   );
 }
 
-export default ForumSimplified;
+export default ForumReorganized;
