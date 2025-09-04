@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/dog-forum-widget/static/js/main.37987896.js",
+    "main.js": "/dog-forum-widget/static/js/main.fb0b6e7a.js",
     "index.html": "/dog-forum-widget/index.html",
-    "main.37987896.js.map": "/dog-forum-widget/static/js/main.37987896.js.map"
+    "main.fb0b6e7a.js.map": "/dog-forum-widget/static/js/main.fb0b6e7a.js.map"
   },
   "entrypoints": [
-    "static/js/main.37987896.js"
+    "static/js/main.fb0b6e7a.js"
   ]
 }
