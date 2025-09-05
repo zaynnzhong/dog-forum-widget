@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { FaPaw, FaComment, FaHeart, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen, FaTrash } from 'react-icons/fa';
+import { FaPaw, FaComment, FaHeart, FaSearch, FaChevronDown, FaChevronUp, FaFilter, FaPen, FaTrash, FaEllipsisV } from 'react-icons/fa';
 
 const ForumContainer = styled.div`
   width: 100%;
@@ -313,9 +313,79 @@ const PostCard = styled.div`
   border-radius: 12px;
   box-shadow: ${props => props.theme.shadows.small};
   transition: all 0.3s ease;
+  position: relative;
   
   &:hover {
     box-shadow: ${props => props.theme.shadows.medium};
+  }
+`;
+
+const PostHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+`;
+
+const PostTitleSection = styled.div`
+  flex: 1;
+`;
+
+const OptionsMenu = styled.div`
+  position: relative;
+`;
+
+const OptionsButton = styled.button`
+  background: none;
+  border: none;
+  color: ${props => props.theme.colors.gray.dark};
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: ${props => props.theme.colors.gray.light};
+  }
+`;
+
+const OptionsDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: ${props => props.theme.colors.white};
+  border: 1px solid ${props => props.theme.colors.gray.medium};
+  border-radius: 8px;
+  box-shadow: ${props => props.theme.shadows.medium};
+  min-width: 150px;
+  z-index: 1000;
+  margin-top: 0.25rem;
+  overflow: hidden;
+`;
+
+const OptionItem = styled.button`
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: ${props => props.color || props.theme.colors.black};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: ${props => props.theme.colors.gray.light};
+  }
+  
+  svg {
+    font-size: 0.85rem;
   }
 `;
 
@@ -396,32 +466,6 @@ const PostActions = styled.div`
   gap: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid ${props => props.theme.colors.gray.light};
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const LeftActions = styled.div`
-  display: flex;
-  gap: 0.75rem;
-`;
-
-const DeleteButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.8rem;
-  background: transparent;
-  border: 1px solid #ff4444;
-  border-radius: 16px;
-  color: #ff4444;
-  font-size: 0.85rem;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  
-  &:hover {
-    background: #ff4444;
-    color: white;
-  }
 `;
 
 const ActionButton = styled.button`
@@ -645,6 +689,7 @@ function ForumReorganized() {
   const [expandedPosts, setExpandedPosts] = useState({});
   const [expandedComments, setExpandedComments] = useState({});
   const [showAllComments, setShowAllComments] = useState({});
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('dogForumUsername');
@@ -653,6 +698,20 @@ function ForumReorganized() {
       setCommentUsername(savedUsername);
     }
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdown && !event.target.closest('.options-menu')) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   useEffect(() => {
     const q = query(
@@ -784,8 +843,14 @@ function ForumReorganized() {
     }
   };
 
+  const toggleDropdown = (postId) => {
+    setOpenDropdown(openDropdown === postId ? null : postId);
+  };
+
   const handleDeletePost = async (postId) => {
     if (!window.confirm('Are you sure you want to delete this post?')) return;
+    
+    setOpenDropdown(null); // Close dropdown
     
     try {
       await deleteDoc(doc(db, 'posts', postId));
@@ -1014,16 +1079,37 @@ function ForumReorganized() {
 
                 return (
                   <PostCard key={post.id}>
-                    <PostTitle>{post.title || post.content.substring(0, 40) + '...'}</PostTitle>
-                    <PostMeta>
-                      <MetaItem>
-                        <FaPaw /> {post.authorName}
-                      </MetaItem>
-                      <MetaItem>
-                        <PostTag>{getTopicInfo(post.topic).title}</PostTag>
-                      </MetaItem>
-                      <MetaItem>{formatTime(post.createdAt)}</MetaItem>
-                    </PostMeta>
+                    <PostHeader>
+                      <PostTitleSection>
+                        <PostTitle>{post.title || post.content.substring(0, 40) + '...'}</PostTitle>
+                        <PostMeta>
+                          <MetaItem>
+                            <FaPaw /> {post.authorName}
+                          </MetaItem>
+                          <MetaItem>
+                            <PostTag>{getTopicInfo(post.topic).title}</PostTag>
+                          </MetaItem>
+                          <MetaItem>{formatTime(post.createdAt)}</MetaItem>
+                        </PostMeta>
+                      </PostTitleSection>
+                      {post.authorId === userId && (
+                        <OptionsMenu className="options-menu">
+                          <OptionsButton onClick={() => toggleDropdown(post.id)}>
+                            <FaEllipsisV />
+                          </OptionsButton>
+                          {openDropdown === post.id && (
+                            <OptionsDropdown>
+                              <OptionItem 
+                                color="#ff4444"
+                                onClick={() => handleDeletePost(post.id)}
+                              >
+                                <FaTrash /> Delete Post
+                              </OptionItem>
+                            </OptionsDropdown>
+                          )}
+                        </OptionsMenu>
+                      )}
+                    </PostHeader>
                     
                     <PostContent className={!isExpanded && shouldShowExpand ? 'collapsed' : ''}>
                       {post.content}
@@ -1040,22 +1126,15 @@ function ForumReorganized() {
                     )}
 
                     <PostActions>
-                      <LeftActions>
-                        <ActionButton
-                          className={post.likedBy?.includes(userId) ? 'liked' : ''}
-                          onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
-                        >
-                          <FaHeart /> {post.likes || 0}
-                        </ActionButton>
-                        <ActionButton>
-                          <FaComment /> {post.comments?.length || 0}
-                        </ActionButton>
-                      </LeftActions>
-                      {post.authorId === userId && (
-                        <DeleteButton onClick={() => handleDeletePost(post.id)}>
-                          <FaTrash /> Delete
-                        </DeleteButton>
-                      )}
+                      <ActionButton
+                        className={post.likedBy?.includes(userId) ? 'liked' : ''}
+                        onClick={() => handleLike(post.id, post.likes || 0, post.likedBy)}
+                      >
+                        <FaHeart /> {post.likes || 0}
+                      </ActionButton>
+                      <ActionButton>
+                        <FaComment /> {post.comments?.length || 0}
+                      </ActionButton>
                     </PostActions>
                     
                     {(post.comments?.length > 0 || true) && (
